@@ -1039,7 +1039,7 @@
     // ============================================
     const PASSWORD = "USR1966"; // Mot de passe admin - Modifiez cette valeur pour changer le mot de passe
     const CLUB_NAME = "US Raimbeaucourt 1966";
-    const STORAGE_KEY = "usr_data_v3_u11_2026_2027";
+    const DATA_URL = "data.json"; // <-- FICHIER AUTO : c'est ce fichier que tu modifies sur GitHub
     
     // ============================================
     // GESTION ADMIN MODE
@@ -1130,27 +1130,30 @@
     // INITIALISATION
     // ============================================
     function init() {
-        loadData();
         checkAdminSession();
-        recalculateStandings(); renderAll();
-        updateLastUpdate();
+        loadData().then(() => {
+            recalculateStandings();
+            renderAll();
+            updateLastUpdate();
+        });
     }
     
     function loadData() {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            data = JSON.parse(saved);
-        } else {
-            data = JSON.parse(JSON.stringify(defaultData));
-            saveData();
-        }
+        // Mode AUTO : on ne lit plus le localStorage, on lit data.json sur GitHub
+        // Comme ça, quand tu modifies data.json sur GitHub, TOUT LE MONDE voit la mise à jour sans re-uploader index.html
+        return fetch(DATA_URL + '?v=' + Date.now())
+            .then(r => r.json())
+            .then(json => { data = json; })
+            .catch(() => { data = JSON.parse(JSON.stringify(defaultData)); });
     }
-    
     function saveData() {
-        data.lastUpdate = new Date().toISOString();
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        // En mode AUTO, la sauvegarde ne se fait PLUS dans le navigateur du visiteur.
+        // En Admin, quand tu cliques sur "Exporter les données", ça télécharge le nouveau data.json à mettre sur GitHub.
+        // On met juste à jour la date affichée.
+        if (data) data.lastUpdate = new Date().toISOString();
         updateLastUpdate();
     }
+    // Ancienne saveData localStorage supprimée en mode AUTO
     
     function updateLastUpdate() {
         if (data.lastUpdate) {
@@ -1564,7 +1567,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `usr_data_${new Date().toISOString().split('T')[0]}.json`;
+        a.download = `data.json`; // <-- Tu re-uploades CE fichier sur GitHub, pas index.html
         a.click();
         URL.revokeObjectURL(url);
         showToast('Données exportées', 'success');
